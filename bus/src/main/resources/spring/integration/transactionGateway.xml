@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans:beans
+	xmlns="http://www.springframework.org/schema/integration"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:beans="http://www.springframework.org/schema/beans"
+	xmlns:amqp="http://www.springframework.org/schema/integration/amqp"
+	xmlns:rabbit="http://www.springframework.org/schema/rabbit"
+	xmlns:jms="http://www.springframework.org/schema/integration/jms"
+	xmlns:http="http://www.springframework.org/schema/integration/http"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans
+			http://www.springframework.org/schema/beans/spring-beans.xsd
+			http://www.springframework.org/schema/context
+			http://www.springframework.org/schema/context/spring-context.xsd
+			http://www.springframework.org/schema/integration
+			http://www.springframework.org/schema/integration/spring-integration.xsd
+ 			http://www.springframework.org/schema/integration/amqp 
+ 			http://www.springframework.org/schema/integration/amqp/spring-integration-amqp.xsd
+     		http://www.springframework.org/schema/integration/jms
+			http://www.springframework.org/schema/integration/jms/spring-integration-jms.xsd
+			http://www.springframework.org/schema/integration/http 
+			http://www.springframework.org/schema/integration/http/spring-integration-http.xsd
+			http://www.springframework.org/schema/rabbit
+        	http://www.springframework.org/schema/rabbit/spring-rabbit.xsd">
+
+
+
+<!-- 	********************* http input ************************** -->
+	<channel id="fromHTTPAdapter" />
+
+	<http:inbound-channel-adapter
+		channel="fromHTTPAdapter"
+		status-code-expression="T(org.springframework.http.HttpStatus).NO_CONTENT"
+		supported-methods="POST" path="/httpWeirdTransaction"
+		request-payload-type="edu.mum.model.temp.FlatTransaction">
+
+		<http:request-mapping consumes="application/json" />
+	</http:inbound-channel-adapter>
+
+	<bridge input-channel='fromHTTPAdapter'
+		output-channel='processTransaction' />
+
+
+
+<!-- 	********************* amqp input ************************** -->
+	<channel id="fromAmqpAdapter" />
+
+	<amqp:inbound-channel-adapter
+		channel="fromAmqpAdapter" queue-names="weird.transaction.queue"
+		connection-factory="amqpConnectionFactory" />
+
+	<bridge input-channel='fromAmqpAdapter'
+		output-channel='processTransaction' />
+
+
+<!-- 	********************* jms input ************************** -->
+ 	<beans:bean id="weiredTransactionQueue" class="org.apache.activemq.command.ActiveMQQueue">
+		<beans:constructor-arg value="weird.transaction.queue"/>
+	</beans:bean>
+	<channel id="processTransaction" />
+	<jms:outbound-channel-adapter
+		id="toJMSAdapter" channel="processTransaction"
+		destination="weiredTransactionQueue" />
+</beans:beans>

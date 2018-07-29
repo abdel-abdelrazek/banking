@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans:beans
+	xmlns="http://www.springframework.org/schema/batch"
+	xmlns:beans="http://www.springframework.org/schema/beans"
+	xmlns:p="http://www.springframework.org/schema/p"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:context="http://www.springframework.org/schema/context"
+	xsi:schemaLocation="
+            http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+            http://www.springframework.org/schema/batch http://www.springframework.org/schema/batch/spring-batch.xsd
+            http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context.xsd">
+
+	<beans:bean
+		class="org.springframework.context.support.ReloadableResourceBundleMessageSource"
+		id="messageSource">
+		<beans:property value="classpath:messages" name="basename" />
+		<beans:property value="UTF-8" name="defaultEncoding" />
+	</beans:bean>
+
+	<beans:bean id="mailSender"
+		class="org.springframework.mail.javamail.JavaMailSenderImpl">
+		<beans:property name="host" value="smtp.gmail.com" />
+		<beans:property name="port" value="587" />
+		<!-- Need to place your own username & password here -->
+		<!-- INTERNAL see EAI Notes -->
+		<beans:property name="username"
+			value="i.am.that.guy545@gmail.com" />
+		<beans:property name="password" value="Iamthatguy545" />
+		<beans:property name="javaMailProperties">
+			<beans:props>
+				<beans:prop key="mail.transport.protocol">smtp</beans:prop>
+				<beans:prop key="mail.smtp.auth">true</beans:prop>
+				<beans:prop key="mail.smtp.starttls.enable">true</beans:prop>
+			</beans:props>
+		</beans:property>
+	</beans:bean>
+
+	<beans:bean id="emailTemplateResolver"
+		class="org.thymeleaf.spring4.templateresolver.SpringResourceTemplateResolver">
+		<beans:property name="prefix" value="templates/" />
+		<beans:property name="suffix" value=".html" />
+		<beans:property name="templateMode" value="HTML5" />
+		<beans:property name="cacheable" value="false" />
+	</beans:bean>
+
+	<beans:bean id="emailTemplateEngine"
+		class="org.thymeleaf.spring4.SpringTemplateEngine">
+		<beans:property name="templateResolvers">
+			<beans:set>
+				<beans:ref bean="emailTemplateResolver" />
+			</beans:set>
+		</beans:property>
+	</beans:bean>
+
+	<beans:bean id="jobRepository"
+		class="org.springframework.batch.core.repository.support.MapJobRepositoryFactoryBean">
+		<beans:property name="transactionManager"
+			ref="transactionManager" />
+	</beans:bean>
+
+	<!-- <beans:bean id="transactionManager" class="org.springframework.batch.support.transaction.ResourcelessTransactionManager" 
+		/> -->
+	<beans:bean id="jobLauncher"
+		class="org.springframework.batch.core.launch.support.SimpleJobLauncher">
+		<beans:property name="jobRepository"
+			ref="jobRepository" />
+	</beans:bean>
+
+	<!-- <beans:bean id="reconcile"
+		class="edu.mum.cbs.batch.Reconcile" /> -->
+	<!-- Defining a job -->
+
+	<!-- <job job-repository="jobRepository" id="reconcileJob"> Defining a Step 
+		<step id="step1"> <tasklet ref="reconcile" /> </step> </job> -->
+
+
+	<beans:bean id="dbTxnReader"
+		class="edu.mum.cbs.batch.TransactionReader">
+		<beans:property name="txnService">
+			<beans:bean
+				class="edu.mum.cbs.service.impl.TransactionService" />
+		</beans:property>
+	</beans:bean>
+
+	<beans:bean id="dbReconcileWriter"
+		class="edu.mum.cbs.batch.ReconcileWriter">
+		<beans:property name="reconcileService">
+			<beans:bean
+				class="edu.mum.cbs.service.impl.ReconcileService" />
+		</beans:property>
+	</beans:bean>
+
+	<beans:bean id="reconcileProcessor"
+		class="edu.mum.cbs.batch.ReconcileProcessor">
+		<beans:property name="txnService">
+			<beans:bean
+				class="edu.mum.cbs.service.impl.TransactionService" />
+		</beans:property>
+	</beans:bean>
+
+	<beans:bean id="sendEmail"
+		class="edu.mum.cbs.batch.SendEmail">
+	</beans:bean>
+
+
+
+	<job id="reconcileJob" restartable="false">
+		<step id="step1Reconciliation" next="step2SendEmail">
+			<tasklet>
+				<chunk commit-interval="1" reader="dbTxnReader"
+					writer="dbReconcileWriter" processor="reconcileProcessor">
+				</chunk>
+			</tasklet>
+
+		</step>
+		<step id="step2SendEmail">
+			<tasklet ref="sendEmail" />
+
+		</step>
+		<listeners>
+			<listener ref="interceptingJobExecution" />
+		</listeners>
+	</job>
+
+	<beans:bean id="interceptingJobExecution"
+		class="edu.mum.cbs.batch.ReconcileStepListener" />
+
+</beans:beans>

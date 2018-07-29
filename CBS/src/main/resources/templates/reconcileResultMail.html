@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+<title th:remove="all">Reconcile email</title>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+</head>
+<body>
+
+
+	<p th:text="#{greeting(${name})}" />
+
+	<H4>Reconcile Results !</H4>
+
+	<p>Reconcile details:</p>
+
+	<b>Debit Sum: </b>
+	<span th:text="${reconcile.debitSum}"></span>
+	<br />
+
+	<b>Credit Sum: </b>
+	<span th:text="${reconcile.creditSum}"></span>
+
+
+
+	<br />
+	<p>
+		<br /> Regards,
+	</p>
+</body>
+</html>
